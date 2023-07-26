@@ -6,10 +6,12 @@ from contextlib import ContextDecorator
 from typing import TYPE_CHECKING, Callable
 
 import msgpack
-from bec_lib.core import BECMessage, MessageEndpoints, bec_logger
-from bec_lib.core.connector import ConsumerConnector
 from cytoolz import partition
 from typeguard import typechecked
+
+from bec_lib.core import BECMessage, MessageEndpoints, bec_logger
+from bec_lib.core.connector import ConsumerConnector
+from bec_lib.core.utils import scan_to_csv
 
 from .callback_handler import CallbackRegister
 from .devicemanager_client import Device
@@ -68,6 +70,9 @@ class ScanObject:
         report.request.callbacks.register_many("scan_segment", callback, sync=True)
         report.request.callbacks.register_many("scan_segment", async_callback, sync=False)
 
+        if scans._scan_export.scans is not None:
+            scans._scan_export.scans.append(report)
+
         if not hide_report and self.client.live_updates:
             scan_report_type = self._get_scan_report_type(hide_report)
             # call process_requests even if report_type is None
@@ -112,6 +117,7 @@ class Scans:
         self._hide_report_ctx = HideReport(parent=self)
         self._dataset_id_on_hold = None
         self._dataset_id_on_hold_ctx = DatasetIdOnHold(parent=self)
+        self._scan_export = None
 
     def _import_scans(self):
         available_scans = msgpack.loads(
@@ -231,6 +237,10 @@ class Scans:
         """Context manager / decorator for setting the dataset id on hold"""
         return self._dataset_id_on_hold_ctx
 
+    def scan_export(self, output_file: str):
+        """Context manager / decorator for exporting scans"""
+        return ScanExport(output_file)
+
 
 class ScanGroup(ContextDecorator):
     def __init__(self, parent: Scans = None) -> None:
@@ -320,3 +330,29 @@ class Metadata:
 
     def __exit__(self, *exc):
         self.client.metadata = self._orig_metadata
+
+
+class ScanExport:
+    def __init__(self, output_file: str) -> None:
+        """Context manager for exporting scans
+
+        Args:
+            output_file (str): Output file name
+        """
+        self.output_file = output_file
+        self.client = self._get_client()
+        self.client.scans._scan_export = self
+        self.scans = None
+
+    def _get_client(self):
+        return builtins.__dict__["bec"]
+
+    def __enter__(self):
+        self.scans = []
+        return self
+
+    def __exit__(self, *exc):
+        for scan in self.scans:
+            scan.wait(raise_on_abort=False)
+        scan_to_csv(self.scans, self.output_file)
+        self.scans = None
