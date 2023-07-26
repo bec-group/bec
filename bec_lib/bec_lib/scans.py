@@ -70,7 +70,7 @@ class ScanObject:
         report.request.callbacks.register_many("scan_segment", callback, sync=True)
         report.request.callbacks.register_many("scan_segment", async_callback, sync=False)
 
-        if scans._scan_export.scans is not None:
+        if scans._scan_export and scans._scan_export.scans is not None:
             scans._scan_export.scans.append(report)
 
         if not hide_report and self.client.live_updates:
