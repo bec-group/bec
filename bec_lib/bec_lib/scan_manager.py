@@ -6,6 +6,8 @@ import time
 import uuid
 from math import inf
 
+from typeguard import typechecked
+
 from bec_lib.core import BECMessage, MessageEndpoints, bec_errors, bec_logger
 from bec_lib.core import timeout as bec_timeout
 
@@ -13,7 +15,6 @@ from bec_lib.core import timeout as bec_timeout
 from bec_lib.queue_items import QueueStorage
 from bec_lib.request_items import RequestStorage
 from bec_lib.scan_items import ScanStorage
-from typeguard import typechecked
 
 logger = bec_logger.logger
 
@@ -94,7 +95,7 @@ class ScanReport:
                     time.sleep(sleep_time)
             else:
                 while True:
-                    if self.status == "COMPLETED":
+                    if self.status in ["COMPLETED", "HALTED", "ABORTED", "PAUSED"]:
                         break
                     if self.status == "STOPPED":
                         raise bec_errors.ScanAbortion

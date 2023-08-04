@@ -352,7 +352,9 @@ class ScanExport:
         return self
 
     def __exit__(self, *exc):
-        for scan in self.scans:
-            scan.wait(raise_on_abort=False)
-        scan_to_csv(self.scans, self.output_file)
-        self.scans = None
+        try:
+            for scan in self.scans:
+                scan.wait()
+        finally:
+            scan_to_csv(self.scans, self.output_file)
+            self.scans = None
