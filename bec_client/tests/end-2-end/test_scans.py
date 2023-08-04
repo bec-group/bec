@@ -264,6 +264,7 @@ def test_limit_error(client):
 
     aborted_scan = False
     dev.samx.limits = [-50, 50]
+    time.sleep(10)
     try:
         scans.umv(dev.samx, 500, relative=False)
     except AlarmBase as alarm:
@@ -384,10 +385,10 @@ def test_scan_observer_repeat_queued(client):
     threading.Thread(target=send_repeat, args=(bec,), daemon=True).start()
     # start scan
     scan1 = scans.line_scan(
-        dev.samx, -5, 5, steps=50, exp_time=0.1, hide_report=True, relative=True
+        dev.samx, -5, 5, steps=100, exp_time=0.1, hide_report=True, relative=True
     )
     scan2 = scans.line_scan(
-        dev.samx, -5, 5, steps=50, exp_time=0.1, hide_report=True, relative=True
+        dev.samx, -5, 5, steps=100, exp_time=0.1, hide_report=True, relative=True
     )
 
     scan2.wait()
