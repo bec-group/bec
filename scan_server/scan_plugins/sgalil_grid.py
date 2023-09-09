@@ -61,12 +61,20 @@ class SgalilGrid(FlyScanBase):
 
         """
         super().__init__(*args, **kwargs)
-        # TODO swap start_x and end_x & start_y and end_y to always scan in same direction
-        self.start_y = start_y
-        self.end_y = end_y
+        # Always scan from positive  x & y to negative x & y
+        if start_y > end_y:
+            self.start_y = start_y
+            self.end_y = end_y
+        else:
+            self.start_y = end_y
+            self.end_y = start_y
+        if start_x > end_x:
+            self.start_x = start_x
+            self.end_x = end_x
+        else:
+            self.start_x = end_x
+            self.end_x = start_x
         self.interval_y = interval_y
-        self.start_x = start_x
-        self.end_x = end_x
         self.interval_x = interval_x
         self.exp_time = exp_time
         self.readout_time = readout_time
@@ -151,7 +159,8 @@ class SgalilGrid(FlyScanBase):
         target_diid = self.DIID - 1
         while True:
             # readout the primary device and wait for the fly scan to finish
-            yield from self.stubs.read_and_wait(group="primary", wait_group="readout_primary")
+            yield from self.stubs.read_and_wait(group="primary", wait_group="readout_primary", pointID=self.pointID)
+            self.pointID += 1
             status = self.stubs.get_req_status(
                 device="samx", RID=self.metadata["RID"], DIID=target_diid
             )
