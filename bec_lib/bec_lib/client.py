@@ -76,7 +76,7 @@ class BECClient(BECService, UserScriptsMixin):
         self.config = None
         builtins.bec = self
         self.metadata = {}
-        # self.logbook = LogbookConnector(self.connector)
+        self.logbook = LogbookConnector(self.connector)
         self._update_username()
         self.history = None
         self.callbacks = CallbackHandler()
