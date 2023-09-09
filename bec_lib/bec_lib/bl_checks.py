@@ -18,6 +18,8 @@ logger = bec_logger.logger
 class BeamlineCheckError(Exception):
     pass
 
+class BeamlineCheckRepeat(Exception):
+    pass
 
 def bl_check(fcn):
     """Decorator to perform rpc calls."""
@@ -50,12 +52,14 @@ def _run_with_bl_checks(bl_checks, fcn, *args, **kwargs):
             bl_checks.wait_for_beamline_checks()
         successful = False
         while not successful:
-            successful, res = _run_on_failure(bl_checks, fcn, args, kwargs)
+            try:
+                successful, res = _run_on_failure(bl_checks, fcn, *args, **kwargs)
 
-            if bl_checks.beam_is_okay:
-                successful = True
-            else:
-                bl_checks.wait_for_beamline_checks()
+                if not bl_checks.beam_is_okay:
+                    successful = False
+                    bl_checks.wait_for_beamline_checks()
+            except BeamlineCheckRepeat:
+                successful = False
         return res
 
     finally:
