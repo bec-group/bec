@@ -203,20 +203,48 @@ class ScanBundler(BECService):
                 self._update_monitor_signals(scanID, pointID)
                 self._send_scan_point(scanID, pointID)
 
+
     def _fly_scan_update(self, scanID, device, signal, metadata):
         if "pointID" not in metadata:
             return
         with self._lock:
+            dev = {device: signal}
             pointID = metadata["pointID"]
+            if self.sync_storage[scanID].get("info", {}).get("enforce_sync") is False:
+                monitored_devices = self.monitored_devices[scanID]
 
-            self.sync_storage[scanID][pointID] = {
-                **self.sync_storage[scanID].get(pointID, {}),
-                **signal,
-            }
+                self.sync_storage[scanID][pointID] = {
+                    **self.sync_storage[scanID].get(pointID, {}),
+                    **dev,
+                }
 
-            if self.sync_storage[scanID].get(pointID):
-                self._update_monitor_signals(scanID, pointID)
-                self._send_scan_point(scanID, pointID)
+                if monitored_devices["pointID"].get(pointID) is None:
+                    monitored_devices["pointID"][pointID] = {
+                        dev.name: False for dev in monitored_devices["devices"]
+                    }
+                monitored_devices["pointID"][pointID][device] = True
+
+                monitored_devices_completed = list(monitored_devices["pointID"][pointID].values())
+
+                all_monitored_devices_completed = bool(
+                    all(monitored_devices_completed)
+                    and (
+                        len(monitored_devices_completed)
+                        == len(self.monitored_devices[scanID]["devices"])
+                    )
+                )
+                if all_monitored_devices_completed and self.sync_storage[scanID].get(pointID):
+                    self._update_monitor_signals(scanID, pointID)
+                    self._send_scan_point(scanID, pointID)
+            else:
+                self.sync_storage[scanID][pointID] = {
+                    **self.sync_storage[scanID].get(pointID, {}),
+                    **signal,
+                }
+
+                if self.sync_storage[scanID].get(pointID):
+                    self._update_monitor_signals(scanID, pointID)
+                    self._send_scan_point(scanID, pointID)
 
     def _baseline_update(self, scanID, device, signal):
         with self._lock:
