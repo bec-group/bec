@@ -33,7 +33,7 @@ class LiveUpdatesScanProgress(LiveUpdatesTable):
             await asyncio.sleep(0.1)
             return False
         status = BECMessage.DeviceStatusMessage.loads(status)
-        if status.metadata["scanID"] != self.scan_item.scanID:
+        if status.metadata.get("scanID") != self.scan_item.scanID:
             logger.debug("waiting for new data point")
             await asyncio.sleep(0.1)
             return False
