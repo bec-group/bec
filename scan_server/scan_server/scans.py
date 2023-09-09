@@ -1319,6 +1319,7 @@ class Acquire(ScanBase):
         yield from self.open_scan()
         yield from self.stage()
         yield from self.run_baseline_reading()
+        yield from self.pre_scan()
         yield from self.scan_core()
         yield from self.finalize()
         yield from self.unstage()
