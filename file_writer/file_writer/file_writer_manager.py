@@ -147,7 +147,7 @@ class FileWriterManager(BECService):
                 scan_storage.end_time = msg.content.get("timestamp")
             scan_storage.scan_finished = True
             scan_storage.num_points = msg.content.get("info", {}).get("num_points", 0)
-            scan_storage.enforce_sync = msg.content.get("info", {}).get("enforce_sync","")
+            scan_storage.enforce_sync = msg.content.get("info", {}).get("enforce_sync", "")
             self.check_storage_status(scanID=scanID)
 
     def insert_to_scan_storage(self, msg: BECMessage.ScanMessage) -> None:

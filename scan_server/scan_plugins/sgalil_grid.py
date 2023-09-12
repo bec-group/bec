@@ -29,6 +29,7 @@ from bec_lib.core import bec_logger
 
 logger = bec_logger.logger
 
+
 class SgalilGrid(FlyScanBase):
     scan_name = "sgalil_grid"
     scan_report_hint = "scan_progress"
@@ -87,7 +88,7 @@ class SgalilGrid(FlyScanBase):
         # Scan progress related variables
         self.timeout_progress = 0
         self.progress_point = 0
-        self.timeout_scan_abortion= 10#42 # duty cycles of scan segment update
+        self.timeout_scan_abortion = 10  # 42 # duty cycles of scan segment update
         self.sleep_time = 1
 
     def scan_report_instructions(self):
@@ -103,18 +104,18 @@ class SgalilGrid(FlyScanBase):
 
     def scan_progress(self) -> int:
         """Timeout of the progress bar. This gets updated in the frequency of scan segments"""
-        raw_msg = self.device_manager.producer.get(MessageEndpoints.device_progress('mcs'))
+        raw_msg = self.device_manager.producer.get(MessageEndpoints.device_progress("mcs"))
         if not raw_msg:
-            self.timeout_progress +=1
+            self.timeout_progress += 1
             return self.timeout_progress
         msg = BECMessage.DeviceStatusMessage.loads(raw_msg)
         if not msg:
-            self.timeout_progress +=1
+            self.timeout_progress += 1
             return self.timeout_progress
-        #TODO which update is that!
+        # TODO which update is that!
         updated_progress = int(msg.content["status"]["value"])
         if updated_progress == int(self.progress_point):
-            self.timeout_progress +=1
+            self.timeout_progress += 1
             return self.timeout_progress
         else:
             self.timeout_progress = 0
@@ -188,7 +189,9 @@ class SgalilGrid(FlyScanBase):
         target_diid = self.DIID - 1
         while True:
             # readout the primary device and wait for the fly scan to finish
-            yield from self.stubs.read_and_wait(group="primary", wait_group="readout_primary", pointID=self.pointID)
+            yield from self.stubs.read_and_wait(
+                group="primary", wait_group="readout_primary", pointID=self.pointID
+            )
             self.pointID += 1
             status = self.stubs.get_req_status(
                 device="samx", RID=self.metadata["RID"], DIID=target_diid
@@ -196,7 +199,7 @@ class SgalilGrid(FlyScanBase):
             if status:
                 break
             time.sleep(self.sleep_time)
-            if self.scan_progress() > int(self.timeout_scan_abortion/self.sleep_time):
+            if self.scan_progress() > int(self.timeout_scan_abortion / self.sleep_time):
                 raise ScanAbortion()
 
             # try:
@@ -206,6 +209,3 @@ class SgalilGrid(FlyScanBase):
             #         logger.info('Testing Scan abortion, would have raised here!')
             # except Exception as exc:
             #     logger.info(f'{exc}')
-
-
-
