@@ -448,4 +448,15 @@ def NeXus_format(
             "entry/instrument/pilatus_2/data",
         )
 
+    if (
+        "falcon" in device_manager.devices
+        and device_manager.devices.falcon.enabled
+        and "falcon" in file_references
+    ):
+        falcon = instrument.create_ext_link(
+            "falcon",
+            file_references["falcon"]["path"],
+            "entry/instrument/FalconX1",
+        )
+
     return storage

@@ -42,6 +42,7 @@ class ScanStorage:
         self.start_time = None
         self.end_time = None
         self.enforce_sync = True
+        self.forced_finish = False
 
     def append(self, pointID, data):
         """
@@ -57,9 +58,11 @@ class ScanStorage:
         """
         Check if the scan is ready to be written to file.
         """
+        if self.forced_finish:
+            return True
         if self.enforce_sync:
             return self.scan_finished and (self.num_points == len(self.scan_segments))
-        return self.scan_finished
+        return self.scan_finished and self.scan_number is not None
 
 
 class FileWriterManager(BECService):
@@ -131,15 +134,20 @@ class FileWriterManager(BECService):
 
         scan_storage = self.scan_storage[scanID]
         scan_storage.metadata.update(metadata)
-        if msg.content.get("status") == "open" and not scan_storage.start_time:
+        status = msg.content.get("status")
+        if status:
+            scan_storage.metadata["exit_status"] = status
+        if status == "open" and not scan_storage.start_time:
             scan_storage.start_time = msg.content.get("timestamp")
 
-        if msg.content.get("status") == "closed":
+        if status in ["closed", "aborted", "halted"]:
+            if status in ["aborted", "halted"]:
+                scan_storage.forced_finish = True
             if not scan_storage.end_time:
                 scan_storage.end_time = msg.content.get("timestamp")
             scan_storage.scan_finished = True
-            scan_storage.num_points = msg.content["info"]["num_points"]
-            scan_storage.enforce_sync = msg.content["info"]["enforce_sync"]
+            scan_storage.num_points = msg.content.get("info", {}).get("num_points", 0)
+            scan_storage.enforce_sync = msg.content.get("info", {}).get("enforce_sync","")
             self.check_storage_status(scanID=scanID)
 
     def insert_to_scan_storage(self, msg: BECMessage.ScanMessage) -> None:
@@ -298,15 +306,16 @@ class FileWriterManager(BECService):
         Args:
             scanID (str): Scan ID
         """
-        storage = self.scan_storage[scanID]
-        scan = storage.scan_number
-        file_path = self.writer_mixin.compile_full_filename(scan, "master.h5")
-        self.producer.set_and_publish(
-            MessageEndpoints.public_file(scanID, "master"),
-            BECMessage.FileMessage(file_path=file_path, done=False).dumps(),
-        )
-        successful = True
+        file_path = ""
         try:
+            storage = self.scan_storage[scanID]
+            scan = storage.scan_number
+            file_path = self.writer_mixin.compile_full_filename(scan, "master.h5")
+            self.producer.set_and_publish(
+                MessageEndpoints.public_file(scanID, "master"),
+                BECMessage.FileMessage(file_path=file_path, done=False).dumps(),
+            )
+            successful = True
             logger.info(f"Starting writing to file {file_path}.")
             self.file_writer.write(file_path=file_path, data=storage)
         # pylint: disable=broad-except

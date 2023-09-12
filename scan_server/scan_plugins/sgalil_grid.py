@@ -22,8 +22,12 @@ but they are executed in a specific order:
 
 import time
 
-from scan_server.scans import FlyScanBase, ScanArgType
+from scan_server.scans import FlyScanBase, ScanArgType, ScanAbortion
+from bec_lib.core import MessageEndpoints, BECMessage
 
+from bec_lib.core import bec_logger
+
+logger = bec_logger.logger
 
 class SgalilGrid(FlyScanBase):
     scan_name = "sgalil_grid"
@@ -80,6 +84,11 @@ class SgalilGrid(FlyScanBase):
         self.readout_time = readout_time
         self.num_pos = int(interval_x * interval_y)
         self.scan_motors = ["samx", "samy"]
+        # Scan progress related variables
+        self.timeout_progress = 0
+        self.progress_point = 0
+        self.timeout_scan_abortion= 10#42 # duty cycles of scan segment update
+        self.sleep_time = 1
 
     def scan_report_instructions(self):
         if not self.scan_report_hint:
@@ -91,6 +100,26 @@ class SgalilGrid(FlyScanBase):
         yield from self._move_and_wait([self.start_x, self.start_y])
         yield from self.stubs.pre_scan()
         # TODO move to start position
+
+    def scan_progress(self) -> int:
+        """Timeout of the progress bar. This gets updated in the frequency of scan segments"""
+        raw_msg = self.device_manager.producer.get(MessageEndpoints.device_progress('mcs'))
+        if not raw_msg:
+            self.timeout_progress +=1
+            return self.timeout_progress
+        msg = BECMessage.DeviceStatusMessage.loads(raw_msg)
+        if not msg:
+            self.timeout_progress +=1
+            return self.timeout_progress
+        #TODO which update is that!
+        updated_progress = int(msg.content["status"]["value"])
+        if updated_progress == int(self.progress_point):
+            self.timeout_progress +=1
+            return self.timeout_progress
+        else:
+            self.timeout_progress = 0
+            self.progress_point = updated_progress
+            return self.timeout_progress
 
     def scan_core(self):
         """
@@ -166,4 +195,17 @@ class SgalilGrid(FlyScanBase):
             )
             if status:
                 break
-            time.sleep(1)
+            time.sleep(self.sleep_time)
+            if self.scan_progress() > int(self.timeout_scan_abortion/self.sleep_time):
+                raise ScanAbortion()
+
+            # try:
+            #     logger.info(f'Scan progress check {self.scan_progress()} and {int(self.timeout_scan_abortion/self.sleep_time)}')
+            #     logger.info(f'Potential scan abortion {self.scan_progress() > int(self.timeout_scan_abortion/self.sleep_time)}')
+            #     if self.scan_progress() > int(self.timeout_scan_abortion/self.sleep_time):
+            #         logger.info('Testing Scan abortion, would have raised here!')
+            # except Exception as exc:
+            #     logger.info(f'{exc}')
+
+
+

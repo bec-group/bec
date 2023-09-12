@@ -305,7 +305,8 @@ class ScanWorker(threading.Thread):
         )
 
     def _wait_for_trigger(self, instr: DeviceMsg) -> None:
-        time.sleep(float(instr.content["parameter"]["time"]))
+        trigger_time = float(instr.content["parameter"]["time"]) * self.current_scan_info.get("frames_per_trigger", 1)
+        time.sleep(trigger_time)
         devices = [dev.name for dev in self.device_manager.devices.detectors()]
         metadata = self._last_trigger.metadata
         while True:
