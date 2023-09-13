@@ -62,7 +62,11 @@ class SgalilGrid(FlyScanBase):
             end_x (float): end position of x axis (slow axis)
             interval_x (int): number of points in x axis
             exp_time (float): exposure time in seconds. Default is 0.1s
-            read_time (float): readout time in seconds, minimum of .5e-3s (0.5ms)
+            readout_time (float): readout time in seconds, minimum of 3e-3s (3ms)
+
+        Exp:
+           scans.sgalil_grid(start_y = val1, end_y= val1, interval_y = val1, start_x = val1, end_x = val1, interval_x = val1, exp_time = 0.02, readout_time = 3e-3)
+
 
         """
         super().__init__(*args, **kwargs)
@@ -139,11 +143,20 @@ class SgalilGrid(FlyScanBase):
         status_ddg_mcs_burst = yield from self.stubs.send_rpc_and_wait(
             "ddg_mcs",
             "burst_enable",
-            count=self.interval_y + 1,
+            count=self.interval_y,
             delay=0,
             period=(self.exp_time + self.readout_time),
             config="first",
         )
+        # Disable burst mod on DDF for fsh and EN of MCS card
+        status_ddg_fsh_burst = yield from self.stubs.send_rpc_and_wait(
+            "ddg_fsh",
+            "burst_disable")
+        # Set width of FSH opening to 0
+        status_ddg_fsh_ttlwidth = yield from self.stubs.send_rpc_and_wait(
+            "ddg_fsh", "set_channels", "width", 0, channels = ['channelCD'],
+        )
+
         # TODO disable fsh ddg bc SGalil trigger it directly
         # Setup triggering
         status_ddg_detectors_source = yield from self.stubs.send_rpc_and_wait(
@@ -151,18 +164,16 @@ class SgalilGrid(FlyScanBase):
         )
         status_ddg_mcs_source = yield from self.stubs.send_rpc_and_wait("ddg_mcs", "source.set", 1)
         # Setup mcs_points per line
-        status_mcs_points_per_line = yield from self.stubs.send_rpc_and_wait(
-            "mcs", "num_use_all.set", self.interval_y + 1
-        )
-        status_mcs_lines = yield from self.stubs.send_rpc_and_wait(
-            "mcs", "num_lines.set", self.interval_x
-        )
-        status_ddg_fsh_ttlwidth = yield from self.stubs.send_rpc_and_wait(
-            "ddg_mcs", "set_channels", "width", 0
-        )
-        status_ddg_mcs_ttlwidth = yield from self.stubs.send_rpc_and_wait(
-            "ddg_mcs", "set_channels", "width", 3e-3
-        )
+        # status_mcs_points_per_line = yield from self.stubs.send_rpc_and_wait(
+        #     "mcs", "num_use_all.set", self.interval_y + 1
+        # )
+        # status_mcs_lines = yield from self.stubs.send_rpc_and_wait(
+        #     "mcs", "num_lines.set", self.interval_x
+        # )
+        
+        # status_ddg_mcs_ttlwidth = yield from self.stubs.send_rpc_and_wait(
+        #     "ddg_mcs", "set_channels", "width", 3e-3
+        # )
         status_ddg_mcs_ttldelay = yield from self.stubs.send_rpc_and_wait(
             "ddg_mcs", "set_channels", "delay", 0
         )
@@ -170,8 +181,10 @@ class SgalilGrid(FlyScanBase):
         # wait for the delay generators to finish setting up
         status_ddg_detectors_source.wait()
         status_ddg_mcs_source.wait()
-        status_mcs_points_per_line.wait()
-        status_mcs_lines.wait()
+        trigger_ddg_fsh = yield from self.stubs.send_rpc_and_wait("ddg_fsh", "trigger")
+        #trigger_ddg_fsh.wait()
+        # status_mcs_points_per_line.wait()
+        # status_mcs_lines.wait()
 
         yield from self.stubs.kickoff(
             device="samx",
