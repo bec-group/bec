@@ -203,7 +203,6 @@ class ScanBundler(BECService):
                 self._update_monitor_signals(scanID, pointID)
                 self._send_scan_point(scanID, pointID)
 
-
     def _fly_scan_update(self, scanID, device, signal, metadata):
         if "pointID" not in metadata:
             return

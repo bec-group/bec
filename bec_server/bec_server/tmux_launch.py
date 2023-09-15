@@ -13,7 +13,6 @@ def activate_venv(pane, service_name, service_path):
     # otherwise, we simply take the currently running venv
 
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    
 
     if "site-packages" in __file__:
         venv_base_path = os.path.dirname(
@@ -27,11 +26,11 @@ def activate_venv(pane, service_name, service_path):
     if os.path.exists(f"{base_dir}/bec_venv"):
         pane.send_keys(f"source {base_dir}/bec_venv/bin/activate")
         return
-    #python_dir = sys.executable
-    #base_dir = os.path.dirname(python_dir)
-    #pane.send_keys(f"source {base_dir}/activate")
+    # python_dir = sys.executable
+    # base_dir = os.path.dirname(python_dir)
+    # pane.send_keys(f"source {base_dir}/activate")
 
-    #raise RuntimeError(f"Could not find a virtual environment for {service_name}. ")
+    # raise RuntimeError(f"Could not find a virtual environment for {service_name}. ")
 
 
 def tmux_start(bec_path: str, config_path: str, services: dict):

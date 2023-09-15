@@ -18,8 +18,10 @@ logger = bec_logger.logger
 class BeamlineCheckError(Exception):
     pass
 
+
 class BeamlineCheckRepeat(Exception):
     pass
+
 
 def bl_check(fcn):
     """Decorator to perform rpc calls."""

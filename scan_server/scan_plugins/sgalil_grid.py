@@ -49,7 +49,7 @@ class SgalilGrid(FlyScanBase):
         *args,
         exp_time: float = 0.1,
         readout_time: float = 0.1,
-        **kwargs
+        **kwargs,
     ):
         """
         SGalil-based grid scan.
@@ -149,12 +149,14 @@ class SgalilGrid(FlyScanBase):
             config="first",
         )
         # Disable burst mod on DDF for fsh and EN of MCS card
-        status_ddg_fsh_burst = yield from self.stubs.send_rpc_and_wait(
-            "ddg_fsh",
-            "burst_disable")
+        status_ddg_fsh_burst = yield from self.stubs.send_rpc_and_wait("ddg_fsh", "burst_disable")
         # Set width of FSH opening to 0
         status_ddg_fsh_ttlwidth = yield from self.stubs.send_rpc_and_wait(
-            "ddg_fsh", "set_channels", "width", 0, channels = ['channelCD'],
+            "ddg_fsh",
+            "set_channels",
+            "width",
+            0,
+            channels=["channelCD"],
         )
 
         # TODO disable fsh ddg bc SGalil trigger it directly
@@ -170,7 +172,7 @@ class SgalilGrid(FlyScanBase):
         # status_mcs_lines = yield from self.stubs.send_rpc_and_wait(
         #     "mcs", "num_lines.set", self.interval_x
         # )
-        
+
         # status_ddg_mcs_ttlwidth = yield from self.stubs.send_rpc_and_wait(
         #     "ddg_mcs", "set_channels", "width", 3e-3
         # )
@@ -182,7 +184,7 @@ class SgalilGrid(FlyScanBase):
         status_ddg_detectors_source.wait()
         status_ddg_mcs_source.wait()
         trigger_ddg_fsh = yield from self.stubs.send_rpc_and_wait("ddg_fsh", "trigger")
-        #trigger_ddg_fsh.wait()
+        # trigger_ddg_fsh.wait()
         # status_mcs_points_per_line.wait()
         # status_mcs_lines.wait()
 
@@ -213,7 +215,7 @@ class SgalilGrid(FlyScanBase):
                 break
             time.sleep(self.sleep_time)
             if self.scan_progress() > int(self.timeout_scan_abortion / self.sleep_time):
-                logger.info(f'would have raised a scan abortion here')
+                logger.info(f"would have raised a scan abortion here")
                 # raise ScanAbortion()
 
             # try:
