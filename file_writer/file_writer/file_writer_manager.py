@@ -42,6 +42,7 @@ class ScanStorage:
         self.start_time = None
         self.end_time = None
         self.enforce_sync = True
+        self.forced_finish = False
 
     def append(self, pointID, data):
         """
@@ -57,6 +58,8 @@ class ScanStorage:
         """
         Check if the scan is ready to be written to file.
         """
+        if self.forced_finish:
+            return True
         if self.enforce_sync:
             return self.scan_finished and (self.num_points == len(self.scan_segments))
         return self.scan_finished
@@ -121,6 +124,9 @@ class FileWriterManager(BECService):
             msg (BECMessage.ScanStatusMessage): Scan status message
         """
         scanID = msg.content.get("scanID")
+        if scanID is None:
+            return
+
         if not self.scan_storage.get(scanID):
             self.scan_storage[scanID] = ScanStorage(
                 scan_number=msg.content["info"].get("scan_number"), scanID=scanID
@@ -131,10 +137,15 @@ class FileWriterManager(BECService):
 
         scan_storage = self.scan_storage[scanID]
         scan_storage.metadata.update(metadata)
-        if msg.content.get("status") == "open" and not scan_storage.start_time:
+        status = msg.content.get("status")
+        if status:
+            scan_storage.metadata["exit_status"] = status
+        if status == "open" and not scan_storage.start_time:
             scan_storage.start_time = msg.content.get("timestamp")
 
-        if msg.content.get("status") == "closed":
+        if status in ["closed", "aborted", "halted"]:
+            if status in ["aborted", "halted"]:
+                scan_storage.forced_finish = True
             if not scan_storage.end_time:
                 scan_storage.end_time = msg.content.get("timestamp")
             scan_storage.scan_finished = True

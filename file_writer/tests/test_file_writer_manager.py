@@ -246,3 +246,37 @@ def test_process_async_data_replace():
     ]
     file_manager._process_async_data(data, "scanID", "dev1")
     assert file_manager.scan_storage["scanID"].async_data["dev1"]["data"].shape == (10, 10)
+
+
+def test_update_scan_storage_with_status_ignores_none():
+    file_manager = load_FileWriter()
+    file_manager.update_scan_storage_with_status(
+        BECMessage.ScanStatusMessage(
+            scanID=None,
+            status="closed",
+            info={},
+        )
+    )
+    assert file_manager.scan_storage == {}
+
+
+def test_ready_to_write():
+    file_manager = load_FileWriter()
+    file_manager.scan_storage["scanID"] = ScanStorage(10, "scanID")
+    file_manager.scan_storage["scanID"].scan_finished = True
+    file_manager.scan_storage["scanID"].num_points = 1
+    file_manager.scan_storage["scanID"].scan_segments = {"0": {"data": np.zeros((10, 10))}}
+    assert file_manager.scan_storage["scanID"].ready_to_write() is True
+    file_manager.scan_storage["scanID1"] = ScanStorage(101, "scanID1")
+    file_manager.scan_storage["scanID1"].scan_finished = True
+    file_manager.scan_storage["scanID1"].num_points = 2
+    file_manager.scan_storage["scanID1"].scan_segments = {"0": {"data": np.zeros((10, 10))}}
+    assert file_manager.scan_storage["scanID1"].ready_to_write() is False
+
+
+def test_ready_to_write_forced():
+    file_manager = load_FileWriter()
+    file_manager.scan_storage["scanID"] = ScanStorage(10, "scanID")
+    file_manager.scan_storage["scanID"].scan_finished = False
+    file_manager.scan_storage["scanID"].forced_finish = True
+    assert file_manager.scan_storage["scanID"].ready_to_write() is True
