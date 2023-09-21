@@ -559,8 +559,20 @@ class ScanWorker(threading.Thread):
         self._send_scan_status("closed")
 
     def _stage_devices(self, instr: DeviceMsg) -> None:
-        devices = [dev.name for dev in self.device_manager.devices.enabled_devices]
-        self._staged_devices.update(devices)
+        detectors = [dev.name for dev in self.device_manager.devices.detectors()]
+        devices = [dev.name for dev in self.device_manager.devices.enabled_devices if dev.name not in detectors]
+        for det in detectors:
+            self.device_manager.producer.send(
+                MessageEndpoints.device_instructions(),
+                DeviceMsg(
+                    device=det,
+                    action="stage",
+                    parameter=instr.content["parameter"],
+                    metadata=instr.metadata,
+                ).dumps(),
+            )
+        self._staged_devices.update(detectors)
+
         self.device_manager.producer.send(
             MessageEndpoints.device_instructions(),
             DeviceMsg(
@@ -570,6 +582,7 @@ class ScanWorker(threading.Thread):
                 metadata=instr.metadata,
             ).dumps(),
         )
+        self._staged_devices.update(devices)
         self._wait_for_stage(staged=True, devices=devices, metadata=instr.metadata)
 
     def _unstage_devices(
